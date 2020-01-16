@@ -1,0 +1,117 @@
+<html>
+<script>
+    /*
+     * 以下を参考に作る
+     * https://developer.mozilla.org/en-US/docs/Web/API/WebXR_Device_API
+     */
+
+    // XRをサポートしているかチェック
+    // navigator.xr: https://developer.mozilla.org/en-US/docs/Web/API/Navigator/xr
+    const isSupportedXR = navigator.xr ? true : false;
+    let isAvailableVR = false;
+    let isAvailableAR = false;
+    let isAvailableInline = false;
+    let session = null;
+
+    const isReadyXR = () => { return session ? true : false; }
+
+    const setDomDisp = () => {
+        const setDisp = (el, status) => document.getElementById(el).style.display = status ? '' : 'none';
+        const setBtnDisabled = (el, status) => document.getElementById(el).disabled = status ? '' : 'true';
+
+        setBtnDisabled('start-vr-btn', isAvailableVR);
+        setBtnDisabled('start-ar-btn', isAvailableVR);
+        setBtnDisabled('start-inline-btn', isAvailableInline);
+        setDisp('not-supported-vr-message', !isAvailableVR);
+        setDisp('not-supported-ar-message', !isAvailableAR);
+        setDisp('not-supported-inline-message', !isAvailableInline);
+        
+        if (isReadyXR()) {
+            setDisp('start-btn-area', false);
+            setDisp('session-ctrl-area', true);
+        } else {
+            setDisp('start-btn-area', true);
+            setDisp('session-ctrl-area', false);
+        }
+    }
+
+    const init = async (mode) => {
+        if (!isSupportedXR) {
+            alert('XR not supported');
+            return;
+        }
+
+        try {
+            // XRセッションをサポートしているかチェック
+            // isSessionSupported: https://developer.mozilla.org/en-US/docs/Web/API/XR/isSessionSupported
+            const result = await Promise.all([
+                navigator.xr.isSessionSupported('inline'),
+                navigator.xr.isSessionSupported('immersive-vr'),
+                // immersive-ar対応してない？
+                //navigator.xr.isSessionSupported('immersive-ar'),
+            ]);
+            isAvailableInline = result[0];
+            isAvailableVR = result[1];
+            isAvailableAR = result[2];
+
+            setDomDisp();
+            console.log(isAvailableInline, isAvailableVR, isAvailableAR);
+        } catch (err) {
+            console.log(err)
+        }
+    }
+
+    const startXR = async (mode) => {
+        try {
+            // requestSession: https://developer.mozilla.org/en-US/docs/Web/API/XR/requestSession
+            session = await navigator.xr.requestSession(mode);
+            console.log(session)
+
+            setDomDisp();
+        } catch (err) {
+            console.log(err);
+            alert('session start failed.');
+            return null;
+        }
+    }
+
+    const endXR = () => {
+        if (session) {
+            session.end();
+            session = null;
+
+            setDomDisp();
+        }
+    }
+
+    const requestAnimation = () => {
+        if (session) {
+            // requestAnimationFrame: https://developer.mozilla.org/en-US/docs/Web/API/XRSession/requestAnimationFrame
+            const requestID = session.requestAnimationFrame((time, xrFrame) => {
+                console.log(time, xrFrame)
+            });
+            console.log(requestID);
+        }
+    }
+
+    init();
+</script>
+
+<body>
+    <div id="start-btn-area">
+        <button id="start-inline-btn" onclick="startXR('inline')">start XR(inline)</button id="start-inline-btn">
+        <button id="start-vr-btn" onclick="startXR('immersive-vr')">start VR</button>
+        <button id="start-ar-btn" onclick="startXR('immersive-ar')">start AR</button id="start-ar-btn">
+        <div>
+            <p id="not-supported-vr-message" style="margin: 0; color: red;">VR not supported</p>
+            <p id="not-supported-ar-message" style="margin: 0; color: red;">AR not supported</p>
+            <p id="not-supported-inline-message" style="margin: 0; color: red;">Inline not supported</p>
+        </div>
+    </div>
+    <div id="session-ctrl-area" style="display: none;">
+        <button onclick="requestAnimation()">requestAnimation</button>
+        <button onclick="endXR()">endXR</button>
+    </div>
+</body>
+
+</html>
